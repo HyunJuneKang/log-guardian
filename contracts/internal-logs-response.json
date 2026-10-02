@@ -1,0 +1,11 @@
+[
+  {
+    "id": 20411,
+    "accountId": "partner_017",
+    "occurredAt": "2026-10-08T03:02:11",
+    "ip": "203.0.113.7",
+    "action": "VIEW",
+    "target": "C0001532",
+    "success": true
+  }
+]

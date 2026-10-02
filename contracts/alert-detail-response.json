@@ -1,0 +1,42 @@
+{
+  "alertId": 12,
+  "runId": "run-20261012-01",
+  "analysisDate": "2026-10-08",
+  "accountId": "partner_017",
+  "accountName": "협력사17",
+  "accountType": "PARTNER",
+  "accountDept": "대출모집",
+  "accountStatus": "ACTIVE",
+  "rules": [
+    "VOLUME_SPIKE",
+    "OFF_HOURS",
+    "NEW_IP"
+  ],
+  "severity": "HIGH",
+  "evidence": {
+    "VOLUME_SPIKE": {
+      "viewCount": 3120,
+      "distinctCustomers": 2874,
+      "dailyAvg": 60.0,
+      "ratio": 52.0
+    },
+    "OFF_HOURS": {
+      "nightViewCount": 3120,
+      "nightDailyAvg": 0.0
+    },
+    "NEW_IP": {
+      "newIps": [
+        "203.0.113.7"
+      ],
+      "knownIps": [
+        "10.20.1.17"
+      ]
+    }
+  },
+  "report": "조회 3,120회(고객 2,874명), 평소 하루 평균 60회의 52배. ...",
+  "aiInvestigated": true,
+  "recommendedAction": "LOCK_ACCOUNT",
+  "status": "OPEN",
+  "decidedBy": null,
+  "decidedAt": null
+}

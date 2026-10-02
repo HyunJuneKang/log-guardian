@@ -1,0 +1,22 @@
+{
+  "runId": "run-20261012-01",
+  "analysisDate": "2026-10-08",
+  "alerts": [
+    {
+      "alertId": 12,
+      "accountId": "partner_017",
+      "accountName": "협력사17",
+      "accountType": "PARTNER",
+      "accountStatus": "ACTIVE",
+      "rules": [
+        "VOLUME_SPIKE",
+        "OFF_HOURS",
+        "NEW_IP"
+      ],
+      "severity": "HIGH",
+      "aiInvestigated": true,
+      "recommendedAction": "LOCK_ACCOUNT",
+      "status": "OPEN"
+    }
+  ]
+}

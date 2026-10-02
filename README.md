@@ -23,9 +23,9 @@ log-guardian/
 
 ## 현재 상태
 
-프론트엔드와 Spring Boot 백엔드의 초기 프로젝트를 준비했습니다. 백엔드는 Java 21, Spring Boot 4.1.1, Gradle Wrapper를 사용합니다. FastAPI 실행 방법은 에이전트 프로젝트 생성 후 추가합니다.
+프론트엔드 초기 프로젝트와 백엔드 Day1 엔티티·테이블 4개, 분석 실행·목록·상세 샘플 API를 준비했습니다. 백엔드는 Java 21, Spring Boot 4.1.1, Gradle Wrapper를 사용합니다. FastAPI 실행 방법은 에이전트 프로젝트 생성 후 추가합니다.
 
-개발을 시작할 때 JDK·Node.js·Python 및 주요 라이브러리 버전을 팀에서 맞추고, 각 서버의 실행 명령을 이 README에 추가합니다. 목록·상세 API와 내부 조회 API의 응답 예시도 먼저 확정합니다.
+백엔드의 샘플 API 호출 순서와 내부 응답 예시는 [Backend Day1 안내](docs/backend-day1.md)에 정리했습니다. 응답 JSON은 `contracts/`의 해당 파일을 참고합니다. 팀 전체의 PRD·API 합의와 FastAPI 등 남은 버전·실행 명령 확정은 통합 단계에서 진행합니다.
 
 ### 프로젝트 버전
 
@@ -57,7 +57,7 @@ log-guardian/
 | postgresql | 17.10 |
 | docker | 29.8.0 |
 
-검증 상태: Java 21 컴파일과 실행 JAR 생성, Compose 설정 문법 검사는 통과했습니다. PostgreSQL 17.10 이미지 실행·DB 연결·데이터 유지 검증은 Docker Desktop 시작 오류로 아직 완료하지 못했습니다.
+PostgreSQL 17.10의 기동·연결·재시작 후 데이터 유지와 테이블 4개 생성을 확인했습니다. 백엔드 테스트와 실행 방법은 아래 및 [Backend Day1 안내](docs/backend-day1.md)를 참고합니다.
 
 ## PostgreSQL 개발 환경
 
@@ -84,7 +84,7 @@ cd backend
 
 IntelliJ에서는 저장소 루트를 열고 `backend/build.gradle`을 Gradle 프로젝트로 연결합니다. Project SDK와 Gradle JVM을 JDK 21로 설정하고 `BackendApplication`을 실행합니다. 작업 디렉터리는 저장소 루트 또는 `backend`여야 합니다. 두 위치 모두 루트 `.env`를 읽도록 구성했습니다. 실행 설정에 기존 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 환경변수가 있다면 `.env`보다 우선하므로 같은 값으로 맞추거나 제거하세요. `.env`는 Docker Compose와 Spring이 각각 읽으며, PowerShell 환경변수로 자동 등록되지는 않습니다.
 
-기본 서버 포트는 `8080`입니다. 아직 API를 구현하지 않았으므로 `/`의 404 응답은 정상입니다. 현재 자동 테이블 생성은 꺼져 있습니다(`ddl-auto=none`). 엔티티와 스키마 초기화는 후속 작업에서 구현합니다.
+기본 서버 포트는 `8080`입니다. 샘플 API는 `/api/analysis/run`, `/api/alerts`, `/api/alerts/{id}`입니다. `/`의 404 응답은 정상입니다. 로컬 데모 개발에서는 `ddl-auto=update`로 실행 시 엔티티에 맞춰 누락된 테이블과 칼럼을 생성합니다. `account`, `access_log`, `alert`, `agent_audit` 테이블은 PostgreSQL `public` 스키마에서 확인할 수 있습니다. 이 설정은 운영 DB의 스키마 마이그레이션 용도로 사용하지 않습니다.
 
 DB를 실행한 상태에서 기존 Spring 컨텍스트 테스트와 빌드를 확인합니다.
 
