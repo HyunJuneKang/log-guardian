@@ -219,21 +219,19 @@ DB는 수업에서 쓴 MySQL이나 Oracle이 이미 깔려 있으면 그것을 �
       "rules": ["VOLUME_SPIKE", "OFF_HOURS", "NEW_IP"],
       "severity": "HIGH",
       "evidence": {
-        "viewCount": 3120,
-        "distinctCustomers": 2874,
-        "dailyAvg": 60,
-        "ratio": 52.0,
-        "nightViewCount": 3120,
-        "nightDailyAvg": 0,
-        "newIp": true
+        "VOLUME_SPIKE": { "viewCount": 3120, "distinctCustomers": 2874, "dailyAvg": 60.0, "ratio": 52.0 },
+        "OFF_HOURS": { "nightViewCount": 3120, "nightDailyAvg": 0.0 },
+        "NEW_IP": { "newIps": ["203.0.113.7"], "knownIps": ["10.20.1.17"] }
       },
-      "report": "새벽 3시에 고객 정보를 3,120회 조회했습니다(고객 2,874명). 평소 하루 평균 60회의 52배입니다...",
+      "report": "조회 3,120회(고객 2,874명), 평소 하루 평균 60회의 52배. ...",
       "aiInvestigated": true,
       "recommendedAction": "LOCK_ACCOUNT"
     }
   ]
 }
 ```
+
+`evidence`는 **걸린 규칙 이름을 열쇠로** 묶습니다. 걸리지 않은 규칙의 열쇠는 넣지 않습니다. 규칙별 칸은 아래 "규칙별 근거 칸" 표에 정해 두었습니다.
 
 `/agent/chat` 요청과 응답:
 
@@ -271,7 +269,7 @@ DB는 수업에서 쓴 MySQL이나 Oracle이 이미 깔려 있으면 그것을 �
 
 같은 단어를 세 사람이 다르게 세면 숫자가 안 맞습니다. 아래로 고정합니다.
 
-- **분석일:** 가짜 데이터의 마지막 날 하루로 고정합니다. 오늘 날짜를 쓰지 않습니다. 언제 실행해도 같은 결과가 나와야 하기 때문입니다.
+- **분석일:** 가짜 데이터의 마지막 날 하루로 고정합니다. 오늘 날짜를 쓰지 않습니다. 언제 실행해도 같은 결과가 나와야 하기 때문입니다. 이 날짜는 스프링의 application.yml 한 곳에만 적습니다(app.analysis-date: 2026-10-08). 스프링이 이 값으로 from, to, analysisDate를 만들어 FastAPI에 보냅니다. 화면과 FastAPI는 날짜를 따로 갖지 않고 받은 값만 씁니다. 단, 가짜 로그를 만드는 make\_logs.py에도 마지막 날짜가 들어가므로, 스프링이 CSV를 넣을 때 로그의 마지막 날짜가 설정값과 같은지 검사하고 다르면 멈춥니다.
 - **기준 기간(평소):** 분석일 **이전** 13일. 분석일 자체는 넣지 않습니다. 넣으면 이상한 날의 숫자가 "평소"에 섞여 배수가 작아집니다.
 - **"지난주", "어제" 같은 말:** 버튼을 누른 날이 아니라 **분석일을 오늘로 보고** 계산합니다. "지난주"는 분석일 직전 7일이고 분석일은 포함하지 않습니다.
 - **조회 건수(`viewCount`):** `action`이 VIEW이고 `success`가 참인 로그의 줄 수.
@@ -289,6 +287,147 @@ DB는 수업에서 쓴 MySQL이나 Oracle이 이미 깔려 있으면 그것을 �
 - 상태 변경과 계정 잠금은 하나의 트랜잭션(전부 성공하거나 전부 취소되는 작업 묶음)으로 처리합니다. 스프링에서는 `@Transactional` 한 줄입니다.
 - 누가, 언제 승인했는지를 `decided_by`, `decided_at`에 남깁니다.
 - FastAPI에는 잠금 주소를 알려 주지 않고, `X-Internal-Key`로는 `/internal/*` 조회만 허용합니다.
+
+### 규칙별 근거 칸 (`evidence`)
+
+파이썬이 계산하고, 스프링이 그대로 저장하고, 화면이 근거 숫자 표로 그립니다. 세 사람이 모두 이 표를 따릅니다.
+
+| 규칙 | 칸 | 뜻 |
+| --- | --- | --- |
+| `VOLUME_SPIKE` | `viewCount` | 분석일 조회 건수 (정수) |
+|  | `distinctCustomers` | 분석일에 조회한 고객 수, 중복 제거 (정수) |
+|  | `dailyAvg` | 기준 기간 하루 평균 조회 건수 (소수 1자리) |
+|  | `ratio` | `viewCount ÷ dailyAvg` (소수 1자리). 평균이 0이면 `null` |
+| `OFF_HOURS` | `nightViewCount` | 분석일 00\~05시 조회 건수 (정수) |
+|  | `nightDailyAvg` | 기준 기간 00\~05시 하루 평균 (소수 1자리) |
+| `NEW_IP` | `newIps` | 분석일에 처음 나타난 IP 목록 (문자열 배열) |
+|  | `knownIps` | 기준 기간에 쓰던 IP 목록 (문자열 배열) |
+| `LOGIN_FAIL_BURST` | `failCount` | 가장 많이 실패한 10분 구간의 실패 횟수 (정수) |
+|  | `windowMinutes` | 구간 길이. 항상 10 |
+|  | `firstFailAt` | 그 구간의 첫 실패 시각 |
+|  | `successAt` | 그 뒤 처음 성공한 로그인 시각 |
+| `SEQUENTIAL_SCAN` | `runLength` | 고객번호가 1씩 늘며 이어진 가장 긴 연속 조회 길이 (정수) |
+|  | `startTarget` | 그 연속의 첫 고객번호 |
+|  | `endTarget` | 그 연속의 마지막 고객번호 |
+
+### 나머지 응답 모양: 화면 ↔ 스프링
+
+`POST /api/analysis/run` 응답 (요청 본문 없음):
+
+```json
+{ "runId": "run-20261012-01", "analysisDate": "2026-10-08", "candidateCount": 7, "highCount": 3, "mediumCount": 2, "lowCount": 2 }
+```
+
+`GET /api/alerts` 응답. 가장 최근 실행의 의심 건만, 위험도 높은 순으로 줍니다. 분석을 한 번도 안 했으면 `runId`는 `null`, `alerts`는 빈 배열입니다.
+
+```json
+{
+  "runId": "run-20261012-01",
+  "analysisDate": "2026-10-08",
+  "alerts": [
+    {
+      "alertId": 12,
+      "accountId": "partner_017",
+      "accountName": "협력사17",
+      "accountType": "PARTNER",
+      "accountStatus": "ACTIVE",
+      "rules": ["VOLUME_SPIKE", "OFF_HOURS", "NEW_IP"],
+      "severity": "HIGH",
+      "aiInvestigated": true,
+      "recommendedAction": "LOCK_ACCOUNT",
+      "status": "OPEN"
+    }
+  ]
+}
+```
+
+`GET /api/alerts/{id}` 응답. 목록의 한 줄에 아래 칸이 더 붙습니다.
+
+```json
+{
+  "alertId": 12,
+  "runId": "run-20261012-01",
+  "analysisDate": "2026-10-08",
+  "accountId": "partner_017",
+  "accountName": "협력사17",
+  "accountType": "PARTNER",
+  "accountDept": "대출모집",
+  "accountStatus": "ACTIVE",
+  "rules": ["VOLUME_SPIKE", "OFF_HOURS", "NEW_IP"],
+  "severity": "HIGH",
+  "evidence": { "VOLUME_SPIKE": { "viewCount": 3120, "distinctCustomers": 2874, "dailyAvg": 60.0, "ratio": 52.0 } },
+  "report": "조회 3,120회(고객 2,874명), 평소 하루 평균 60회의 52배. ...",
+  "aiInvestigated": true,
+  "recommendedAction": "LOCK_ACCOUNT",
+  "status": "OPEN",
+  "decidedBy": null,
+  "decidedAt": null
+}
+```
+
+`POST /api/alerts/{id}/chat` 요청과 응답. 대화 기록은 서버에 저장하지 않고 **화면이 들고 있다가 매번 같이 보냅니다.** 스프링은 여기에 `runId`, `analysisDate`, `alertId`, `accountId`를 붙여 `/agent/chat`으로 넘깁니다. `history`의 모양은 두 구간이 같습니다.
+
+```json
+{
+  "question": "이 계정 지난주에는 어땠어?",
+  "history": [
+    { "role": "user", "content": "이 IP는 처음 보는 거야?" },
+    { "role": "assistant", "content": "네, 기준 기간 13일 동안 쓴 적이 없습니다." }
+  ]
+}
+```
+
+```json
+{ "answer": "분석일 직전 7일(10/1~10/7) 하루 평균 58회로 평소와 같았습니다." }
+```
+
+`POST /api/alerts/{id}/dismiss` 응답 (요청 본문 없음). 승인과 같은 규칙으로 `status`가 OPEN일 때만 됩니다. 계정 상태는 바꾸지 않습니다.
+
+```json
+{ "alertId": 12, "status": "DISMISSED", "accountStatus": "ACTIVE", "decidedBy": "admin", "decidedAt": "2026-10-12T09:06:10" }
+```
+
+### 나머지 응답 모양: FastAPI → 스프링 (`/internal/*`)
+
+`GET /internal/logs`와 `GET /internal/logs/all` 응답. 둘 다 같은 모양의 배열이고 시각 순입니다. `from`은 포함, `to`는 제외입니다. 로그인 기록처럼 조회 대상이 없으면 `target`은 `null`입니다.
+
+```json
+[
+  { "id": 20411, "accountId": "partner_017", "occurredAt": "2026-10-08T03:02:11", "ip": "203.0.113.7", "action": "VIEW", "target": "C0001532", "success": true },
+  { "id": 20412, "accountId": "emp_015", "occurredAt": "2026-10-08T08:41:03", "ip": "10.20.1.15", "action": "LOGIN", "target": null, "success": false }
+]
+```
+
+탐지 규칙은 분석일과 기준 기간이 모두 필요합니다. 그래서 FastAPI는 `/internal/logs/all`을 **14일 전체**(분석일 13일 전부터 분석일 다음 날 0시 전까지)로 한 번 부릅니다.
+
+`GET /internal/accounts/{id}` 응답:
+
+```json
+{ "accountId": "partner_017", "name": "협력사17", "type": "PARTNER", "dept": "대출모집", "status": "ACTIVE" }
+```
+
+`GET /internal/accounts/{id}/baseline?before=2026-10-08` 응답. 요일별 평균은 **요일 이름을 열쇠로 한 객체**이고, 일곱 요일을 항상 다 넣습니다. 값은 기준 기간 안에 있는 그 요일 날들의 평균 조회 건수입니다.
+
+```json
+{
+  "accountId": "emp_011",
+  "before": "2026-10-08",
+  "days": 13,
+  "dailyAvgViews": 64.6,
+  "nightDailyAvgViews": 0.0,
+  "weekdayAvgViews": { "MON": 58.0, "TUE": 61.0, "WED": 60.5, "THU": 360.0, "FRI": 59.5, "SAT": 0.0, "SUN": 0.0 },
+  "knownIps": ["10.20.1.11"]
+}
+```
+
+요일별 평균은 표본이 1\~2일뿐입니다. 위 예시의 목요일 360은 10월 1일 하루의 값입니다. 보고서에 "지난주 목요일에도"처럼 써야지 "매주"라고 단정하면 안 됩니다.
+
+### 모든 응답에 공통인 규칙
+
+- 값이 없으면 칸을 빼지 않고 `null`을 넣습니다. 목록이 비면 `[]`입니다.
+- 평균과 배수는 소수 1자리로 반올림합니다. 건수는 정수입니다.
+- 날짜만 있는 값은 `2026-10-08`, 시각은 `2026-10-08T03:02:11` 모양입니다.
+- 실패하면 위의 공통 오류 모양(`code`, `message`)을 돌려줍니다. 상태 번호는 로그인 안 됨 401, 대상 없음 404, 이미 처리됨 409, 그 밖의 서버 오류 500입니다.
 
 ## 6. 가짜 로그 데이터
 
@@ -423,7 +562,7 @@ LLM에게 로그 3만 줄을 통째로 주면 느리고, 비싸고, 숫자를 �
 
 ### LLM 고르기
 
-수업에서 쓰던 모델과 API 키를 그대로 쓰는 것이 가장 빠릅니다. 강사님이 키를 주시는지 1일차에 확인하세요. 랜그스미스(에이전트가 어떤 도구를 어떤 순서로 불렀는지 보여주는 추적 도구)를 켜 두면 오류 찾는 시간이 크게 줄어듭니다.
+강사님이 OpenAI API 키를 제공해 주시기로 했습니다. 랭체인의 `ChatOpenAI`로 연결합니다. 키는 `agent/.env`의 `OPENAI_API_KEY`에만 두고 C가 관리합니다. 어떤 모델을 쓸 수 있는지와 사용 한도는 1일차에 확인하세요. 모델 이름도 `.env`에 두면 코드를 고치지 않고 바꿀 수 있습니다. 랜그스미스(에이전트가 어떤 도구를 어떤 순서로 불렀는지 보여주는 추적 도구)를 켜 두면 오류 찾는 시간이 크게 줄어듭니다.
 
 ## 8. 6일 일정표
 
@@ -489,7 +628,7 @@ LLM에게 로그 3만 줄을 통째로 주면 느리고, 비싸고, 숫자를 �
 
 - [ ] 강사님이 주제를 자유로 주시는지, 정해 주시는지
 - [ ] 뼈대 코드나 정해진 구조가 있는지
-- [ ] LLM API 키를 제공하시는지, 어떤 모델인지
+- [ ] OpenAI API 키로 쓸 수 있는 모델과 사용 한도 (키 제공은 확정)
 - [ ] 팀을 직접 짜는지, 배정되는지
 - [ ] 발표와 평가가 있는지, 몇 분인지
 - [ ] 로그인을 넣을지 뺄지
@@ -523,7 +662,7 @@ LLM에게 로그 3만 줄을 통째로 주면 느리고, 비싸고, 숫자를 �
 | 로그인을 초기에, 4일차 통합, 5일차 검증 | 반영 | 로그인을 늦게 붙이면 잘 돌던 호출이 한꺼번에 막힙니다. 2일차로 당겼습니다 (8장) |
 | 3장 그림이 `[embedded content]`로 남음 | 반영 안 함 | 이 문서에는 실제 그림이 있습니다. 마크다운 파일로 내보낼 때 그림이 빠진 것입니다. 그림 아래 8단계 목록이 같은 내용을 글로 담고 있습니다 |
 | `/analyze`와 `/agent/analyze` 표기 통일 | 반영 | 단순 오기였습니다 (4장) |
-| 로그인·승인·오류 예시 추가 | 반영 | A와 B가 따로 짜도 맞물리게 합니다. 목록 응답은 DB 표와 같아 생략했습니다 (5장) |
+| 로그인·승인·오류 예시 추가 | 반영 | A와 B가 따로 짜도 맞물리게 합니다. 목록·상세 등 나머지 응답은 3차 검토에서 채웠습니다 (5장) |
 | 라이브러리 버전과 실행 명령 고정 | 일부 반영 | 필요하지만, 수업에서 쓴 버전을 제가 모릅니다. 임의로 적는 대신 1일차 확인 목록에 넣었습니다 (9장) |
 | "30분 안에", "세팅 시간 0" 표현 | 반영 | 근거 없는 낙관이었습니다. 지우고 확인 시간을 배정했습니다 |
 
@@ -547,3 +686,9 @@ LLM에게 로그 3만 줄을 통째로 주면 느리고, 비싸고, 숫자를 �
 | 시드와 데이터 버전 기록 | 반영 | 도구 응답 전체를 저장하지 않기로 한 결정의 전제 조건입니다 (6장) |
 | 내보낸 파일용 글자 도표 | 반영 | 파일로 공유하고 있으므로 필요합니다. 그림은 그대로 두고 글자 도표를 덧붙였습니다 (3장) |
 | 9장의 "10건 이하로 제한", 7장 예시의 숫자 작성 주체 | 반영 | 1차 수정 때 고치지 못하고 남은 옛 표현이었습니다 |
+
+### 3차 검토 반영
+
+"모양이 정해지지 않은 응답 7개와 요일별 평균"이라는 지적을 전부 반영했습니다. 1차 때 목록 응답을 "DB 표와 같아 생략"한 것은 제 판단 착오였습니다. DB 칸 이름(`account_id`)과 응답 칸 이름(`accountId`)이 다르고, 화면에는 계정 이름처럼 DB 표 하나에 없는 값도 필요하기 때문입니다.
+
+함께 바꾼 것이 하나 있습니다. `evidence`를 한 덩어리에서 **규칙 이름별 묶음**으로 바꿨습니다. 한 계정이 여러 규칙에 걸리므로, 어느 숫자가 어느 규칙의 근거인지 구분돼야 화면이 규칙별로 표를 그릴 수 있습니다.
