@@ -1,0 +1,42 @@
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Frontend
+node_modules/
+dist/
+.vite/
+
+# Java / Spring Boot
+.gradle/
+build/
+target/
+*.class
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors
+.idea/
+*.iml
+.vscode/
+
+# Local database and runtime output
+*.mv.db
+*.trace.db
+*.lock.db
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
