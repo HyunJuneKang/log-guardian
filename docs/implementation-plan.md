@@ -153,14 +153,14 @@ PM 경험이 있는 사람이 B를 맡는 것을 권합니다. B는 양쪽 서�
 | --- | --- | --- |
 | `account` | 감시 대상 계정 | `account_id`, `name`, `type`(EMPLOYEE 또는 PARTNER), `dept`, `status`(ACTIVE 또는 LOCKED) |
 | `access_log` | 접속 기록 한 줄 | `id`, `account_id`, `occurred_at`, `ip`, `action`(LOGIN, VIEW, DOWNLOAD), `target`(조회한 고객번호), `success`(성공 여부) |
-| `alert` | 의심 건. 실행·계정마다 1줄 | `id`, `run_id`, `account_id`, `rules`(걸린 규칙 목록), `severity`(HIGH, MEDIUM, LOW), `evidence`(근거 숫자 JSON), `report`(보고서), `ai_investigated`(AI가 조사했는지), `recommended_action`, `status`(OPEN, APPROVED, DISMISSED), `decided_by`, `decided_at` |
-| `agent_audit` | AI 활동 기록 | `id`, `run_id`, `path`(부른 주소), `params`(조회 조건), `http_status`(성공·실패), `called_at` |
+| `alert` | 의심 건. 실행·계정마다 1줄 | `id`, `run_id`, `account_id`, `rules`(걸린 규칙 목록 JSONB), `severity`(HIGH, MEDIUM, LOW), `evidence`(근거 숫자 JSONB), `report`(보고서), `ai_investigated`(AI가 조사했는지), `recommended_action`, `status`(OPEN, APPROVED, DISMISSED), `decided_by`, `decided_at` |
+| `agent_audit` | AI 활동 기록 | `id`, `run_id`, `path`(부른 주소), `params`(조회 조건 TEXT), `http_status`(성공·실패), `called_at` |
 
 `run_id`는 "분석 실행" 한 번마다 스프링이 새로 만드는 번호입니다. 분석이 중간에 실패해 의심 건이 안 만들어져도, 그 실행에서 AI가 무엇을 조회했는지 이 번호로 찾을 수 있습니다.
 
 **다시 분석하면:** 이전 결과를 덮어쓰지 않고 새 `run_id`로 새 줄을 만듭니다. 의심 건 하나를 가리키는 단위는 `run_id` + `account_id`입니다. 목록 화면(`GET /api/alerts`)은 **가장 최근 실행**만 보여 줍니다. 이전 실행에서 승인한 기록은 DB에 그대로 남습니다. 이미 잠긴 계정이 다시 의심 건으로 나오면 화면에 "이미 잠김"으로 표시합니다.
 
-DB는 수업에서 쓴 MySQL이나 Oracle이 이미 깔려 있으면 그것을 씁니다. 없으면 H2(설치 없이 쓰는 간단한 DB)가 준비할 것이 가장 적습니다. 어느 쪽이든 1일차에 연결 확인까지 마칩니다.
+DB는 PostgreSQL 17.10으로 통일합니다. 각자 로컬 Docker에서 루트의 `compose.yaml`로 실행하며 호스트 포트는 `5434`, DB 이름은 `logguardian`입니다. 다른 프로젝트의 DB와 컨테이너·볼륨을 분리하고 named volume으로 데이터를 유지합니다. 계정과 비밀번호는 Git에서 제외한 `.env`로 관리하며 `.env.example`에 로컬 샘플을 제공합니다. DB 시간대는 `Asia/Seoul`, 업무 시각은 PostgreSQL `timestamp without time zone`과 Java `LocalDateTime`을 사용합니다. 실행 방법은 README를 따르며, 1일차에 DB와 백엔드 연결을 확인합니다.
 
 ### 화면 → 스프링 (A와 B의 약속)
 
@@ -570,7 +570,7 @@ LLM에게 로그 3만 줄을 통째로 주면 느리고, 비싸고, 숫자를 �
 
 | 날 | A (리액트) | B (스프링) | C (FastAPI) | 그날의 완료 기준 |
 | --- | --- | --- | --- | --- |
-| 1일차 | 프로젝트 생성, 화면 3개 빈 틀과 이동 연결 | 프로젝트 생성, 테이블 4개, 가짜 답을 주는 API. `/internal/*`의 샘플 응답 JSON을 C에게 전달 | 프로젝트 생성, 가짜 답을 주는 `/agent/analyze`, LLM 키로 "안녕" 호출 성공, `make_logs.py` 시작 | 오전: 2·5장 확정, 버전과 실행 명령을 README에 기록. 저녁: 세 서버가 각자 켜진다 |
+| 1일차 | 프로젝트 생성, 화면 3개 빈 틀과 이동 연결 | 프로젝트 생성, 테이블 4개, 가짜 답을 주는 API. `/internal/*`의 샘플 응답 JSON을 C에게 전달. `jsonb` 칸에 가짜 `evidence` 한 건 저장·조회 확인| 프로젝트 생성, 가짜 답을 주는 `/agent/analyze`, LLM 키로 "안녕" 호출 성공, `make_logs.py` 시작 | 오전: 2·5장 확정, 버전과 실행 명령을 README에 기록. 저녁: 세 서버가 각자 켜진다 |
 | 2일차 | "분석 실행" 버튼과 목록 표를 실제 API에 연결, 로그인 화면 | CSV를 DB에 넣기, `AgentClient`, CORS 설정, 최소 로그인(계정 1개와 JWT) | 가짜 로그 CSV와 정답표 완성·확인, 샘플 응답으로 규칙 2개 작성 | **관통:** 로그인 후 버튼을 누르면 화면 → 스프링 → FastAPI → 화면으로 가짜 의심 건이 돌아와 표에 뜬다 |
 | 3일차 | 상세 화면: 보고서와 근거 숫자 표 | `/internal/*` 조회 API 4개, 비밀 키 검사, AI 활동 기록, 의심 건 저장 | 도구 5개, `investigate` 노드, 규칙 5개 완성, 함정 2건이 후보에 들어오는지 확인 | 진짜 로그로 분석해서 보고서가 화면에 뜬다 (F2\~F4, F7) |
 | 4일차 | 채팅창, 승인·닫기 버튼, 로딩·오류 표시 | 채팅 전달, 승인 규칙과 계정 잠금, 예외 처리 | `/agent/chat`, 프롬프트 다듬기, LLM 실패 시 기본 보고서 | **필수 기능 전부 통합** (F1\~F7). 이후 새 기능 추가 금지 |
