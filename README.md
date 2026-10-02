@@ -26,6 +26,13 @@ log-guardian/
 
 개발을 시작할 때 JDK·Node.js·Python 및 주요 라이브러리 버전을 팀에서 맞추고, 각 서버의 실행 명령을 이 README에 추가합니다. 목록·상세 API와 내부 조회 API의 응답 예시도 먼저 확정합니다.
 
+| 설치된 것 | 버전 |
+| -------- | --- |
+| git | 2.x.x |
+| java | 21.x.x |
+| node | 24.x.x |
+| python | 3.14.6 |
+
 ## 요청 흐름
 
 화면은 Spring Boot만 호출합니다. Spring Boot가 FastAPI에 분석·채팅을 요청하고, FastAPI는 Spring Boot의 내부 조회 API를 통해 로그를 읽습니다. 승인 요청은 Spring Boot에서 검증한 뒤 데모 DB에 반영합니다.
